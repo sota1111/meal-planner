@@ -16,6 +16,7 @@ class FlyerScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('チラシ（特売品）')),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'flyerFab',
         onPressed: () => _showForm(context, ref),
         child: const Icon(Icons.add),
       ),

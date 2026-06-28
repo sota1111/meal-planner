@@ -16,6 +16,7 @@ class FridgeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('在庫（冷蔵庫）')),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fridgeFab',
         onPressed: () => _showForm(context, ref),
         child: const Icon(Icons.add),
       ),
