@@ -1,0 +1,31 @@
+name: meal_planner
+description: 家庭の献立をAI（Google Gemini）が提案するプロトタイプアプリ。
+publish_to: 'none'
+version: 1.0.0-prototype+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^2.5.1
+  google_generative_ai: ^0.4.6
+  flutter_dotenv: ^5.1.0
+  table_calendar: ^3.1.2
+  intl: ^0.19.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    # GEMINI_API_KEY を保持する .env を同梱アセットとして読み込む。
+    # .env はリポジトリにコミットしない（.gitignore 対象）。実行前に `.env.example` からコピーすること。
+    - .env
