@@ -27,12 +27,14 @@
 
 ## セットアップ
 
-このリポジトリには `lib/`・`pubspec.yaml`・テストなどのアプリ本体のみが含まれます。
-プラットフォーム固有フォルダ（`ios/` `android/` 等）は含まれていないため、初回のみ生成してください。
+このリポジトリにはアプリ本体（`lib/`・`pubspec.yaml`・テスト）に加えて `android/` を同梱しています。
+**`ios/` プラットフォームフォルダは未同梱**のため、iOS で動かす場合は初回のみ生成してください
+（Mac での iOS ビルド・配布の詳細は後述の「Mac で iPhone（iOS）向けにビルド・デプロイ」を参照）。
 
 ```bash
-# 1. プラットフォームフォルダを生成（初回のみ。lib/ や pubspec.yaml は上書きされません）
-flutter create .
+# 1. 未同梱のプラットフォームフォルダを生成（初回のみ。lib/ や pubspec.yaml は上書きされません）
+#    iOS が必要なら ios/ を生成。すべて生成するなら `flutter create .`
+flutter create --platforms=ios .
 
 # 2. 依存関係を取得
 flutter pub get
@@ -45,6 +47,74 @@ cp .env.example .env
 # 4. 実行（iOSシミュレータ / Androidエミュレータ / 実機）
 flutter run
 ```
+
+## Mac で iPhone（iOS）向けにビルド・デプロイ
+
+Mac 上でこのプロトタイプを iPhone（iOS）アプリとしてビルド・配布する手順です。
+**iOS のビルドには macOS と Xcode が必須**で、Windows / Linux では実施できません。
+
+### 1. 前提（Mac に用意するもの）
+
+| 項目 | 用意方法 |
+| -- | -- |
+| macOS + Xcode | App Store から Xcode をインストール。初回に `sudo xcodebuild -license accept` を実行 |
+| Xcode Command Line Tools | `xcode-select --install` |
+| CocoaPods | `sudo gem install cocoapods`（または `brew install cocoapods`） |
+| Flutter SDK | `flutter doctor` を実行し、**iOS toolchain と Xcode の項目が緑**になることを確認 |
+| Apple Developer アカウント | 実機実行は無料の Apple ID でも可。TestFlight / App Store 配布には有料の Apple Developer Program 登録が必須 |
+
+### 2. iOS プロジェクトの準備（初回のみ）
+
+このリポジトリには `ios/` が同梱されていないため、最初に生成します。
+
+```bash
+# ios/ プラットフォームフォルダを生成（lib/ や pubspec.yaml は上書きされません）
+flutter create --platforms=ios .
+
+# APIキーを設定（未設定なら）
+cp .env.example .env   # .env を開いて GEMINI_API_KEY=... を設定
+
+# 依存関係を取得
+flutter pub get
+```
+
+### 3. シミュレータで実行
+
+```bash
+open -a Simulator     # iOS シミュレータを起動
+flutter devices       # 認識されたデバイスを確認
+flutter run           # 起動中のシミュレータで実行（-d <device-id> で指定も可）
+```
+
+### 4. 実機（iPhone）で実行
+
+1. iPhone を Mac に USB 接続し、デバイス側で「このコンピュータを信頼」を選択。
+2. `open ios/Runner.xcworkspace` で Xcode を開く。
+3. **Runner** ターゲット → **Signing & Capabilities** で、自分の Apple ID（Team）を選択し、
+   **Bundle Identifier** を一意な値（例: `com.<yourname>.mealplanner`）に変更。
+4. 初回はデバイス側で **設定 > 一般 > VPNとデバイス管理** から開発者プロファイルを信頼。
+5. `flutter run -d <iphone-device-id>`（`flutter devices` で ID を確認）、または Xcode の ▶ Run で実行。
+
+### 5. リリースビルド・配布（TestFlight / App Store）
+
+```bash
+# 署名済みの IPA を生成（build/ios/ipa/ に出力）
+flutter build ipa
+```
+
+1. `flutter build ipa` で `build/ios/ipa/*.ipa` を生成（署名設定は手順4のものを使用）。
+2. **Xcode の Organizer**（Window > Organizer）または **Transporter** アプリ、`xcrun altool` で
+   App Store Connect へアップロード。
+3. App Store Connect の **TestFlight** で内部テスターに配布して動作確認。
+4. 審査を経て **App Store** で公開。
+5. ※ TestFlight / App Store への配布には有料の **Apple Developer Program** 登録が必須です。
+
+### よくあるハマりどころ
+
+- **`pod install` 失敗 / CocoaPods 未導入** → `cd ios && pod install`（CocoaPods を再インストール）。
+- **署名エラー（No signing certificate / provisioning）** → Bundle ID を一意にし、Team 設定を再確認。
+- **`flutter doctor` の iOS 項目が赤** → Xcode 本体・Command Line Tools・CocoaPods のいずれかが未導入。
+- AI献立生成を試す場合は `.env` の `GEMINI_API_KEY` を設定（未設定でも UI 操作は可能）。
 
 ## 検証
 
