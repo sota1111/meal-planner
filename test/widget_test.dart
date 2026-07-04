@@ -25,10 +25,11 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
 
-    // メイン画面の4タブが表示される
+    // メイン画面の5タブが表示される
     expect(find.text('献立'), findsOneWidget);
     expect(find.text('在庫'), findsOneWidget);
     expect(find.text('チラシ'), findsOneWidget);
+    expect(find.text('買い物'), findsOneWidget);
     expect(find.text('設定'), findsOneWidget);
   });
 }
