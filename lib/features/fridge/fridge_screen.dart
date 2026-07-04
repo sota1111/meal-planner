@@ -38,7 +38,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'fridgeFab',
-        onPressed: _loading ? null : () => _showForm(context),
+        onPressed: _loading ? null : () => _showAddOptions(context),
         child: const Icon(Icons.add),
       ),
       body: Stack(
@@ -146,6 +146,48 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// 「＋」ボタンから、手入力と画像からの追加を並べて選べるようにする（SOT-1512）。
+  /// 画像からの在庫追加を分かりやすくするための導線。
+  void _showAddOptions(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                '在庫を追加',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('手入力で追加'),
+              subtitle: const Text('食材名と数量を入力して登録します'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _showForm(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.add_a_photo_outlined),
+              title: const Text('画像から追加'),
+              subtitle: const Text('写真を選ぶとAIが在庫を読み取って登録します'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _pickAndExtract();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showForm(BuildContext context, {FridgeItem? existing}) {
