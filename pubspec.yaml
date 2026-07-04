@@ -38,10 +38,11 @@ flutter:
 
 # アプリアイコン設定（SOT-1513）。起動時スプラッシュ画面と同じ緑（ColorScheme.fromSeed(green).primary
 # = #3B6939）背景に白の restaurant_menu アイコン。`dart run flutter_launcher_icons` で
-# android/app/src/main/res 配下の mipmap（各密度＋adaptive）を再生成する。iOS/web ターゲットは無し。
+# android/app/src/main/res 配下の mipmap（各密度＋adaptive）と、iOS の
+# ios/Runner/Assets.xcassets/AppIcon.appiconset を再生成する。
 flutter_launcher_icons:
   android: true
-  ios: false
+  ios: true
   image_path: "assets/icon/app_icon.png"
   adaptive_icon_background: "#3B6939"
   adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
