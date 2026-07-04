@@ -19,6 +19,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   # 献立・在庫・チラシ・設定を端末ローカルへ永続化する（アプリ再起動後も保持）。
   shared_preferences: ^2.2.3
+  # 画像から在庫を自動入力するため、フォトライブラリの画像を選択する（SOT-1512）。
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
