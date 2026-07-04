@@ -32,7 +32,8 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen> {
           IconButton(
             tooltip: '画像から在庫を自動入力',
             icon: const Icon(Icons.add_a_photo_outlined),
-            onPressed: _loading ? null : _pickAndExtract,
+            onPressed:
+                _loading ? null : () => _pickAndExtract(ImageSource.gallery),
           ),
         ],
       ),
@@ -94,13 +95,16 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen> {
     );
   }
 
-  /// フォトライブラリの画像を選び、AIで在庫を読み取って一覧へ追加登録する。
-  Future<void> _pickAndExtract() async {
+  /// 画像を取得し、AIで在庫を読み取って一覧へ追加登録する。
+  /// [source] にフォトライブラリ（gallery）かカメラ撮影（camera）を指定する（SOT-1512）。
+  Future<void> _pickAndExtract(ImageSource source) async {
     final XFile? file;
     try {
-      file = await _picker.pickImage(source: ImageSource.gallery);
+      file = await _picker.pickImage(source: source);
     } catch (_) {
-      _showSnackBar('画像の選択に失敗しました');
+      _showSnackBar(source == ImageSource.camera
+          ? '写真の撮影に失敗しました'
+          : '画像の選択に失敗しました');
       return;
     }
     if (file == null) return; // ユーザーがキャンセルした
@@ -175,12 +179,21 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.add_a_photo_outlined),
-              title: const Text('画像から追加'),
-              subtitle: const Text('写真を選ぶとAIが在庫を読み取って登録します'),
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('写真から追加'),
+              subtitle: const Text('フォトライブラリの写真からAIが在庫を読み取ります'),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                _pickAndExtract();
+                _pickAndExtract(ImageSource.gallery);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('カメラで撮影して追加'),
+              subtitle: const Text('その場で撮影した写真からAIが在庫を読み取ります'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _pickAndExtract(ImageSource.camera);
               },
             ),
             const SizedBox(height: 8),
