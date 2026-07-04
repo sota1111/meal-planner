@@ -28,7 +28,14 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
 
   DateTimeRange? _range;
   final Set<String> _selectedMoods = {};
+  final TextEditingController _otherRequestController = TextEditingController();
   bool _loading = false;
+
+  @override
+  void dispose() {
+    _otherRequestController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickRange() async {
     final now = DateTime.now();
@@ -62,6 +69,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
         flyer: ref.read(flyerProvider),
         settings: ref.read(settingsProvider),
         moods: _selectedMoods.toList(),
+        otherRequest: _otherRequestController.text,
       );
       ref.read(mealsProvider.notifier).mergeDays(result);
       if (!mounted) return;
@@ -130,6 +138,18 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
                     ),
                 ],
               ),
+              const SizedBox(height: 24),
+              Text('その他要望', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _otherRequestController,
+                enabled: !_loading,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  hintText: '例: 麺類を多めに、辛いものは控えめ など',
+                ),
+              ),
               const SizedBox(height: 32),
               FilledButton.icon(
                 onPressed: _loading ? null : _generate,
@@ -138,7 +158,7 @@ class _GenerateScreenState extends ConsumerState<GenerateScreen> {
               ),
               const SizedBox(height: 12),
               const Text(
-                '在庫・特売品・家族設定・アレルギー・好みを踏まえて、各日「主菜・副菜・汁物」を提案します。',
+                '在庫・特売品・家族設定・アレルギー・好み・その他要望を踏まえて、各日「主菜・副菜・汁物」を提案します。',
                 style: TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],
