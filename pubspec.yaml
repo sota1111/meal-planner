@@ -26,6 +26,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  # 起動時スプラッシュと同じ意匠（緑背景＋restaurant_menu）のランチャーアイコンを生成する（SOT-1513）。
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
@@ -33,3 +35,14 @@ flutter:
     # GEMINI_API_KEY を保持する .env を同梱アセットとして読み込む。
     # .env はリポジトリにコミットしない（.gitignore 対象）。実行前に `.env.example` からコピーすること。
     - .env
+
+# アプリアイコン設定（SOT-1513）。起動時スプラッシュ画面と同じ緑（ColorScheme.fromSeed(green).primary
+# = #3B6939）背景に白の restaurant_menu アイコン。`dart run flutter_launcher_icons` で
+# android/app/src/main/res 配下の mipmap（各密度＋adaptive）を再生成する。iOS/web ターゲットは無し。
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#3B6939"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
+  min_sdk_android: 21
