@@ -58,4 +58,12 @@ class Meal {
       steps: toStringList(json['steps']),
     );
   }
+
+  /// 永続化用の JSON へ変換する（カテゴリは日本語ラベルで保存し `fromJson` と対称）。
+  Map<String, dynamic> toJson() => {
+        'name': name,
+        'category': category.label,
+        'ingredients': ingredients,
+        'steps': steps,
+      };
 }

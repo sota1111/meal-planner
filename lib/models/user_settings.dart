@@ -22,6 +22,26 @@ class UserSettings {
     );
   }
 
+  /// 永続化用の JSON へ変換する。
+  Map<String, dynamic> toJson() => {
+        'familySize': familySize,
+        'allergies': allergies,
+        'preferences': preferences,
+      };
+
+  /// 永続化された JSON から復元する。
+  factory UserSettings.fromJson(Map<String, dynamic> json) {
+    List<String> toStringList(dynamic value) => value is List
+        ? value.map((e) => e.toString()).toList()
+        : const [];
+    final size = json['familySize'];
+    return UserSettings(
+      familySize: (size is int ? size : int.tryParse('$size') ?? 2).clamp(1, 10),
+      allergies: toStringList(json['allergies']),
+      preferences: toStringList(json['preferences']),
+    );
+  }
+
   /// 設定で選択可能なアレルギー候補。
   static const List<String> allergyOptions = [
     '卵',

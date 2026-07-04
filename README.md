@@ -4,7 +4,8 @@
 冷蔵庫の在庫・スーパーの特売情報・家族の好みやアレルギーをもとに、AI（Google Gemini）が献立を自動提案します。
 
 > **バージョン:** 1.0.0-prototype
-> オンメモリ動作のプロトタイプであり、データの永続化・サーバー連携・アカウント機能はありません。
+> 献立・在庫・チラシ・ユーザー設定は端末ローカル（`shared_preferences`）に永続化され、アプリを再起動しても保持されます。
+> サーバー連携・クラウド同期・アカウント機能はありません（データは端末内にのみ保存されます）。
 
 ## 主な機能
 
@@ -21,6 +22,7 @@
 
 - Flutter（iOS / Android。主対象はモバイル）
 - 状態管理: Riverpod（`Notifier` / `NotifierProvider`）
+- ローカル永続化: `shared_preferences`（JSON 直列化。献立・在庫・チラシ・設定を端末に保存）
 - AI: Google Gemini `gemini-2.5-flash`（`google_generative_ai` パッケージ）
 - カレンダー: `table_calendar`
 - 環境変数: `flutter_dotenv`

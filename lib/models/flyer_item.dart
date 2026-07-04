@@ -21,4 +21,18 @@ class FlyerItem {
       price: clearPrice ? null : (price ?? this.price),
     );
   }
+
+  /// 永続化用の JSON へ変換する。
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'price': price,
+      };
+
+  /// 永続化された JSON から復元する。
+  factory FlyerItem.fromJson(Map<String, dynamic> json) => FlyerItem(
+        id: (json['id'] ?? '').toString(),
+        name: (json['name'] ?? '').toString(),
+        price: json['price'] is int ? json['price'] as int : null,
+      );
 }

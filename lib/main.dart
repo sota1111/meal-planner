@@ -3,8 +3,10 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'features/splash/splash_screen.dart';
+import 'services/persistence.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +17,14 @@ Future<void> main() async {
   } catch (_) {
     // .env が見つからなくても起動は継続する（AI生成時に明確なエラーを表示）。
   }
-  runApp(const ProviderScope(child: MealPlannerApp()));
+  // 起動前に永続化ストアを取得し、各 Notifier が同期的に読み書きできるようにする。
+  final prefs = await SharedPreferences.getInstance();
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const MealPlannerApp(),
+    ),
+  );
 }
 
 class MealPlannerApp extends StatelessWidget {
