@@ -120,4 +120,38 @@ void main() {
     expect(list[0].name, '鶏もも肉');
     expect(list[0].recipes, ['唐揚げ', '親子丼']);
   });
+
+  test('丸括弧の補足表記（全角・半角）は名前から除去して出力する', () {
+    final list = computeShoppingList(
+      meals: [
+        _meal('サラダ', ['玉ねぎ（中）', 'トマト(完熟)', 'レタス']),
+      ],
+      fridge: const [],
+    );
+    expect(list.map((e) => e.name), ['玉ねぎ', 'トマト', 'レタス']);
+  });
+
+  test('丸括弧違いの同じ食材は1件にまとめる', () {
+    final list = computeShoppingList(
+      meals: [
+        _meal('カレー', ['玉ねぎ（中）']),
+        _meal('スープ', ['玉ねぎ']),
+      ],
+      fridge: const [],
+    );
+    expect(list, hasLength(1));
+    expect(list[0].name, '玉ねぎ');
+    expect(list[0].recipes, ['カレー', 'スープ']);
+  });
+
+  test('塩こしょうは調味料として除外する（表記ゆれ含む）', () {
+    final list = computeShoppingList(
+      meals: [
+        _meal('ステーキ', ['牛肉', '塩こしょう', '塩コショウ', '塩胡椒 少々']),
+      ],
+      fridge: const [],
+    );
+    // 塩こしょう系は除外され、実食材の牛肉だけが残る。
+    expect(list.map((e) => e.name), ['牛肉']);
+  });
 }

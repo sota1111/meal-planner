@@ -13,6 +13,17 @@ class ShoppingItem {
 String _normalize(String value) =>
     value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), '');
 
+/// 「玉ねぎ（中）」の（中）のような補足表記（丸括弧とその中身）を取り除く。
+/// 全角「（）」・半角「()」の両方に対応し、買い物リストに無駄な情報が出ないようにする。
+/// 例: 「玉ねぎ（中）」→「玉ねぎ」、「トマト(完熟)」→「トマト」。
+String _stripBrackets(String value) {
+  // 丸括弧とその中身を除去する。
+  var s = value.replaceAll(RegExp(r'[（(][^）)]*[）)]'), '');
+  // 対応の取れていない丸括弧記号だけが残った場合も除去する。
+  s = s.replaceAll(RegExp(r'[（）()]'), '');
+  return s.replaceAll(RegExp(r'\s+'), ' ').trim();
+}
+
 /// 数量・分量の表記を取り除いて食材の基本名を得る。
 /// 例: 「鶏もも肉 300g」→「鶏もも肉」、「醤油 大さじ2」→「醤油」、「塩 少々」→「塩」。
 /// これにより数量違いの同じ食材（「鶏もも肉 300g」と「鶏もも肉 200g」）を1件にまとめられる。
@@ -52,6 +63,8 @@ const List<String> _rawSeasonings = <String>[
   '油', 'サラダ油', 'ごま油', 'ゴマ油', '胡麻油', 'オリーブオイル', 'オリーブ油', '米油',
   // こしょう
   'こしょう', 'コショウ', '胡椒', '黒こしょう', '黒胡椒', '白こしょう', 'ブラックペッパー',
+  // 塩こしょう（塩・こしょうの合わせ調味料）
+  '塩こしょう', '塩コショウ', '塩胡椒', 'しお胡椒', '塩・こしょう', '塩・コショウ',
   // だし・スープの素
   'だし', '出汁', 'だしの素', '顆粒だし', '和風だし', 'ほんだし',
   'コンソメ', 'ブイヨン', '中華だし', '鶏がらスープの素', '鶏ガラスープの素',
@@ -118,7 +131,8 @@ List<ShoppingItem> computeShoppingList({
     for (final ingredient in meal.ingredients) {
       final raw = ingredient.trim();
       if (raw.isEmpty) continue;
-      final base = _stripQuantity(raw); // 数量を除いた基本名
+      // 丸括弧の補足表記を除いてから数量を除いた基本名にする。
+      final base = _stripQuantity(_stripBrackets(raw));
       final key = _normalize(base);
       if (key.isEmpty) continue;
       if (_isSeasoningOrWater(key)) continue; // 水・調味料は除外
