@@ -4,8 +4,9 @@ import '../calendar/calendar_screen.dart';
 import '../flyer/flyer_screen.dart';
 import '../fridge/fridge_screen.dart';
 import '../settings/settings_screen.dart';
+import '../shopping/shopping_list_screen.dart';
 
-/// メイン画面。「献立／在庫／チラシ／設定」の4タブのボトムナビゲーション（F-51）。
+/// メイン画面。「献立／在庫／チラシ／買い物／設定」のボトムナビゲーション（F-51）。
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -20,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> {
     CalendarScreen(),
     FridgeScreen(),
     FlyerScreen(),
+    ShoppingListScreen(),
     SettingsScreen(),
   ];
 
@@ -45,6 +47,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.local_offer_outlined),
             selectedIcon: Icon(Icons.local_offer),
             label: 'チラシ',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.shopping_cart_outlined),
+            selectedIcon: Icon(Icons.shopping_cart),
+            label: '買い物',
           ),
           NavigationDestination(
             icon: Icon(Icons.settings_outlined),
