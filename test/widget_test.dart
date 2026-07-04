@@ -2,12 +2,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:meal_planner/main.dart';
+import 'package:meal_planner/services/persistence.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   testWidgets('スプラッシュ画面が表示され、メイン画面へ遷移する', (tester) async {
     await initializeDateFormatting('ja_JP', null);
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
 
-    await tester.pumpWidget(const ProviderScope(child: MealPlannerApp()));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+        child: const MealPlannerApp(),
+      ),
+    );
 
     // スプラッシュ画面
     expect(find.text('Meal Planner'), findsOneWidget);

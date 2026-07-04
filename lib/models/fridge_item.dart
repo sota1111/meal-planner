@@ -37,4 +37,25 @@ class FridgeItem {
       unit: unit ?? this.unit,
     );
   }
+
+  /// 永続化用の JSON へ変換する。単位は列挙名で保存する。
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'quantity': quantity,
+        'unit': unit.name,
+      };
+
+  /// 永続化された JSON から復元する（不明な単位は個にフォールバック）。
+  factory FridgeItem.fromJson(Map<String, dynamic> json) => FridgeItem(
+        id: (json['id'] ?? '').toString(),
+        name: (json['name'] ?? '').toString(),
+        quantity: json['quantity'] is int
+            ? json['quantity'] as int
+            : int.tryParse('${json['quantity']}') ?? 0,
+        unit: FridgeUnit.values.firstWhere(
+          (u) => u.name == json['unit'],
+          orElse: () => FridgeUnit.piece,
+        ),
+      );
 }
