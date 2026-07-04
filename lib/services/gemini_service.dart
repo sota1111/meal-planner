@@ -168,6 +168,103 @@ class GeminiService {
     return result;
   }
 
+  /// 画像からチラシ（特売品）情報を読み取り、登録可能な商品リストを返す（SOT-1515）。
+  ///
+  /// [imageBytes] は選択した画像のバイト列、[mimeType] は `image/jpeg` などの MIME タイプ。
+  /// スーパーのチラシ・特売広告の写真などから商品名と価格（判読できる場合）を推定する。
+  Future<List<FlyerItem>> extractFlyerItems({
+    required Uint8List imageBytes,
+    required String mimeType,
+  }) async {
+    if (apiKey.isEmpty) {
+      throw GeminiException('Gemini APIキーが設定されていません。.env を確認してください。');
+    }
+
+    try {
+      final model = GenerativeModel(
+        model: _modelName,
+        apiKey: apiKey,
+        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+      );
+      final response = await model.generateContent([
+        Content.multi([
+          TextPart(_flyerExtractionPrompt),
+          DataPart(mimeType, imageBytes),
+        ]),
+      ]);
+      final text = response.text;
+      if (text == null || text.trim().isEmpty) {
+        throw GeminiException('AIから空の応答が返されました。');
+      }
+      return parseFlyerItems(text);
+    } on GeminiException {
+      rethrow;
+    } catch (e) {
+      throw GeminiException('画像からのチラシ読み取りに失敗しました: $e');
+    }
+  }
+
+  static const String _flyerExtractionPrompt = '''
+あなたはスーパーのチラシ（特売広告）を読み取るアシスタントです。
+渡された画像（スーパーのチラシ、特売広告、値札の写真など）に写っている
+特売品の商品名と価格を読み取り、チラシ情報として登録できる形式で列挙してください。
+
+# ルール
+- 食品・食材の特売品を対象とすること。
+- 価格（円）が読み取れる場合は税抜・税込を問わず整数の円で表すこと。読み取れない場合は null とすること。
+- 同じ商品が複数回写っている場合は1件にまとめること。
+- 商品が1つも読み取れない場合は items を空配列にすること。
+
+# 出力形式（JSONのみ。前後に説明文やコードブロック記法を付けないこと）
+{
+  "items": [
+    { "name": "商品名", "price": 整数の円 または null }
+  ]
+}
+''';
+
+  /// チラシ抽出AIの応答（JSON文字列）を [FlyerItem] のリストへ変換する（SOT-1515）。
+  ///
+  /// UI から独立してテスト可能な純粋関数。名前が空の要素は除外し、価格が正の整数でなければ
+  /// null（価格未設定）にフォールバックする。各要素には一意な id を採番する。
+  static List<FlyerItem> parseFlyerItems(String raw) {
+    final cleaned = _stripCodeFence(raw);
+    final Map<String, dynamic> decoded;
+    try {
+      decoded = jsonDecode(cleaned) as Map<String, dynamic>;
+    } catch (_) {
+      throw GeminiException('AI応答の解析に失敗しました。');
+    }
+
+    final items = decoded['items'];
+    if (items is! List) {
+      throw GeminiException('AI応答にチラシデータが含まれていません。');
+    }
+
+    final baseId = DateTime.now().microsecondsSinceEpoch;
+    final result = <FlyerItem>[];
+    var seq = 0;
+    for (final item in items) {
+      if (item is! Map) continue;
+      final name = (item['name'] ?? '').toString().trim();
+      if (name.isEmpty) continue;
+      final rawPrice = item['price'];
+      int? price;
+      if (rawPrice is int) {
+        price = rawPrice;
+      } else if (rawPrice != null) {
+        price = int.tryParse('$rawPrice');
+      }
+      if (price != null && price <= 0) price = null;
+      result.add(FlyerItem(
+        id: '${baseId}_${seq++}',
+        name: name,
+        price: price,
+      ));
+    }
+    return result;
+  }
+
   String _buildPrompt({
     required DateTime start,
     required DateTime end,
