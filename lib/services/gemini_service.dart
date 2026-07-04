@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:intl/intl.dart';
@@ -66,6 +67,105 @@ class GeminiService {
     } catch (e) {
       throw GeminiException('献立の生成に失敗しました: $e');
     }
+  }
+
+  /// 画像から在庫食材を読み取り、登録可能な食材リストを返す（SOT-1512）。
+  ///
+  /// [imageBytes] は選択した画像のバイト列、[mimeType] は `image/jpeg` などの MIME タイプ。
+  /// 冷蔵庫の写真・レシート・買い物メモなどから食材名・数量・単位を推定する。
+  Future<List<FridgeItem>> extractFridgeItems({
+    required Uint8List imageBytes,
+    required String mimeType,
+  }) async {
+    if (apiKey.isEmpty) {
+      throw GeminiException('Gemini APIキーが設定されていません。.env を確認してください。');
+    }
+
+    try {
+      final model = GenerativeModel(
+        model: _modelName,
+        apiKey: apiKey,
+        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+      );
+      final response = await model.generateContent([
+        Content.multi([
+          TextPart(_fridgeExtractionPrompt),
+          DataPart(mimeType, imageBytes),
+        ]),
+      ]);
+      final text = response.text;
+      if (text == null || text.trim().isEmpty) {
+        throw GeminiException('AIから空の応答が返されました。');
+      }
+      return parseFridgeItems(text);
+    } on GeminiException {
+      rethrow;
+    } catch (e) {
+      throw GeminiException('画像からの在庫読み取りに失敗しました: $e');
+    }
+  }
+
+  static const String _fridgeExtractionPrompt = '''
+あなたは家庭の食材在庫を読み取るアシスタントです。
+渡された画像（冷蔵庫の中身の写真、レシート、手書きの買い物メモなど）に写っている
+食材とその数量を読み取り、在庫として登録できる形式で列挙してください。
+
+# ルール
+- 食材（食品）のみを対象とし、食品以外の物は無視すること。
+- 数量が読み取れない場合は 1 とすること。
+- 単位は個数で数えるものを "piece"、重さ（グラム）で表すものを "gram" とすること。判断できない場合は "piece"。
+- 同じ食材が複数写っている場合は数量を合算して1件にまとめること。
+- 食材が1つも読み取れない場合は items を空配列にすること。
+
+# 出力形式（JSONのみ。前後に説明文やコードブロック記法を付けないこと）
+{
+  "items": [
+    { "name": "食材名", "quantity": 正の整数, "unit": "piece" または "gram" }
+  ]
+}
+''';
+
+  /// 在庫抽出AIの応答（JSON文字列）を [FridgeItem] のリストへ変換する。
+  ///
+  /// UI から独立してテスト可能な純粋関数。名前が空の要素は除外し、数量が不正なら 1 に補正、
+  /// 未知の単位は「個」にフォールバックする。各要素には一意な id を採番する。
+  static List<FridgeItem> parseFridgeItems(String raw) {
+    final cleaned = _stripCodeFence(raw);
+    final Map<String, dynamic> decoded;
+    try {
+      decoded = jsonDecode(cleaned) as Map<String, dynamic>;
+    } catch (_) {
+      throw GeminiException('AI応答の解析に失敗しました。');
+    }
+
+    final items = decoded['items'];
+    if (items is! List) {
+      throw GeminiException('AI応答に在庫データが含まれていません。');
+    }
+
+    final baseId = DateTime.now().microsecondsSinceEpoch;
+    final result = <FridgeItem>[];
+    var seq = 0;
+    for (final item in items) {
+      if (item is! Map) continue;
+      final name = (item['name'] ?? '').toString().trim();
+      if (name.isEmpty) continue;
+      final rawQty = item['quantity'];
+      var quantity =
+          rawQty is int ? rawQty : int.tryParse('$rawQty') ?? 1;
+      if (quantity <= 0) quantity = 1;
+      final unit = FridgeUnit.values.firstWhere(
+        (u) => u.name == item['unit'],
+        orElse: () => FridgeUnit.piece,
+      );
+      result.add(FridgeItem(
+        id: '${baseId}_${seq++}',
+        name: name,
+        quantity: quantity,
+        unit: unit,
+      ));
+    }
+    return result;
   }
 
   String _buildPrompt({
@@ -179,7 +279,7 @@ ${dates.join('、')}
     return result;
   }
 
-  String _stripCodeFence(String text) {
+  static String _stripCodeFence(String text) {
     var t = text.trim();
     if (t.startsWith('```')) {
       // 先頭の ``` または ```json を除去

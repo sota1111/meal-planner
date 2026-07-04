@@ -1,57 +1,154 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../models/fridge_item.dart';
 import '../../providers/fridge_provider.dart';
+import '../../services/gemini_service.dart';
 
 /// 在庫（冷蔵庫）管理画面（F-20〜F-23）。
-class FridgeScreen extends ConsumerWidget {
+/// 画像から在庫を自動入力する機能を持つ（SOT-1512）。
+class FridgeScreen extends ConsumerStatefulWidget {
   const FridgeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FridgeScreen> createState() => _FridgeScreenState();
+}
+
+class _FridgeScreenState extends ConsumerState<FridgeScreen> {
+  final ImagePicker _picker = ImagePicker();
+  bool _loading = false;
+
+  @override
+  Widget build(BuildContext context) {
     final items = ref.watch(fridgeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('在庫（冷蔵庫）')),
+      appBar: AppBar(
+        title: const Text('在庫（冷蔵庫）'),
+        actions: [
+          IconButton(
+            tooltip: '画像から在庫を自動入力',
+            icon: const Icon(Icons.add_a_photo_outlined),
+            onPressed: _loading ? null : _pickAndExtract,
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         heroTag: 'fridgeFab',
-        onPressed: () => _showForm(context, ref),
+        onPressed: _loading ? null : () => _showForm(context),
         child: const Icon(Icons.add),
       ),
-      body: items.isEmpty
-          ? const Center(
-              child: Text('在庫が登録されていません', style: TextStyle(color: Colors.grey)),
-            )
-          : ListView.builder(
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return Dismissible(
-                  key: ValueKey(item.id),
-                  direction: DismissDirection.endToStart,
-                  background: Container(
-                    color: Colors.red,
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: const Icon(Icons.delete, color: Colors.white),
-                  ),
-                  onDismissed: (_) =>
-                      ref.read(fridgeProvider.notifier).remove(item.id),
-                  child: ListTile(
-                    leading: const Icon(Icons.kitchen),
-                    title: Text(item.name),
-                    trailing: Text('${item.quantity}${item.unit.label}'),
-                    onTap: () => _showForm(context, ref, existing: item),
-                  ),
-                );
-              },
+      body: Stack(
+        children: [
+          items.isEmpty
+              ? const Center(
+                  child:
+                      Text('在庫が登録されていません', style: TextStyle(color: Colors.grey)),
+                )
+              : ListView.builder(
+                  itemCount: items.length,
+                  itemBuilder: (context, index) {
+                    final item = items[index];
+                    return Dismissible(
+                      key: ValueKey(item.id),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        color: Colors.red,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      onDismissed: (_) =>
+                          ref.read(fridgeProvider.notifier).remove(item.id),
+                      child: ListTile(
+                        leading: const Icon(Icons.kitchen),
+                        title: Text(item.name),
+                        trailing: Text('${item.quantity}${item.unit.label}'),
+                        onTap: () => _showForm(context, existing: item),
+                      ),
+                    );
+                  },
+                ),
+          if (_loading)
+            const ColoredBox(
+              color: Color(0x66000000),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text(
+                      '画像から在庫を読み取っています…',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
             ),
+        ],
+      ),
     );
   }
 
-  void _showForm(BuildContext context, WidgetRef ref, {FridgeItem? existing}) {
+  /// フォトライブラリの画像を選び、AIで在庫を読み取って一覧へ追加登録する。
+  Future<void> _pickAndExtract() async {
+    final XFile? file;
+    try {
+      file = await _picker.pickImage(source: ImageSource.gallery);
+    } catch (_) {
+      _showSnackBar('画像の選択に失敗しました');
+      return;
+    }
+    if (file == null) return; // ユーザーがキャンセルした
+
+    setState(() => _loading = true);
+    try {
+      final bytes = await file.readAsBytes();
+      final apiKey = dotenv.maybeGet('GEMINI_API_KEY') ?? '';
+      final service = GeminiService(apiKey);
+      final items = await service.extractFridgeItems(
+        imageBytes: bytes,
+        mimeType: _mimeTypeFor(file.name),
+      );
+      if (items.isEmpty) {
+        _showSnackBar('画像から在庫を読み取れませんでした');
+        return;
+      }
+      final notifier = ref.read(fridgeProvider.notifier);
+      for (final item in items) {
+        notifier.add(item);
+      }
+      _showSnackBar('${items.length}件の在庫を登録しました');
+    } on GeminiException catch (e) {
+      _showSnackBar(e.message);
+    } catch (e) {
+      _showSnackBar('予期しないエラーが発生しました: $e');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// ファイル名の拡張子から MIME タイプを推定する（判別不能時は JPEG 扱い）。
+  String _mimeTypeFor(String filename) {
+    final lower = filename.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.heic')) return 'image/heic';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/jpeg';
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showForm(BuildContext context, {FridgeItem? existing}) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
