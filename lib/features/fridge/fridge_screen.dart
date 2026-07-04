@@ -32,7 +32,7 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen> {
           IconButton(
             tooltip: '画像から在庫を自動入力',
             icon: const Icon(Icons.add_a_photo_outlined),
-            onPressed: _loading ? null : _pickAndExtract,
+            onPressed: _loading ? null : () => _showAddOptions(context),
           ),
         ],
       ),
@@ -94,13 +94,16 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen> {
     );
   }
 
-  /// フォトライブラリの画像を選び、AIで在庫を読み取って一覧へ追加登録する。
-  Future<void> _pickAndExtract() async {
+  /// 指定した取得元（フォトライブラリ／カメラ）の画像を選び、AIで在庫を
+  /// 読み取って一覧へ追加登録する。
+  Future<void> _pickAndExtract(ImageSource source) async {
     final XFile? file;
     try {
-      file = await _picker.pickImage(source: ImageSource.gallery);
+      file = await _picker.pickImage(source: source);
     } catch (_) {
-      _showSnackBar('画像の選択に失敗しました');
+      _showSnackBar(source == ImageSource.camera
+          ? 'カメラの起動に失敗しました'
+          : '画像の選択に失敗しました');
       return;
     }
     if (file == null) return; // ユーザーがキャンセルした
@@ -175,12 +178,21 @@ class _FridgeScreenState extends ConsumerState<FridgeScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.add_a_photo_outlined),
-              title: const Text('画像から追加'),
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('カメラで撮影して追加'),
+              subtitle: const Text('その場で撮影するとAIが在庫を読み取って登録します'),
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                _pickAndExtract(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('写真から選んで追加'),
               subtitle: const Text('写真を選ぶとAIが在庫を読み取って登録します'),
               onTap: () {
                 Navigator.of(sheetContext).pop();
-                _pickAndExtract();
+                _pickAndExtract(ImageSource.gallery);
               },
             ),
             const SizedBox(height: 8),
