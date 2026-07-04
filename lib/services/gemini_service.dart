@@ -27,7 +27,7 @@ class GeminiService {
 
   static final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
 
-  /// 期間・在庫・特売品・家族構成・アレルギー・好み・気分から献立を生成する。
+  /// 期間・在庫・特売品・家族構成・アレルギー・好み・気分・その他要望から献立を生成する。
   /// 戻り値は日付 → その日の献立（主菜・副菜・汁物）のマップ。
   Future<Map<DateTime, List<Meal>>> generateMeals({
     required DateTime start,
@@ -36,6 +36,7 @@ class GeminiService {
     required List<FlyerItem> flyer,
     required UserSettings settings,
     required List<String> moods,
+    String otherRequest = '',
   }) async {
     if (apiKey.isEmpty) {
       throw GeminiException('Gemini APIキーが設定されていません。.env を確認してください。');
@@ -48,6 +49,7 @@ class GeminiService {
       flyer: flyer,
       settings: settings,
       moods: moods,
+      otherRequest: otherRequest,
     );
 
     try {
@@ -272,6 +274,7 @@ class GeminiService {
     required List<FlyerItem> flyer,
     required UserSettings settings,
     required List<String> moods,
+    String otherRequest = '',
   }) {
     final dates = <String>[];
     for (var d = DateTime(start.year, start.month, start.day);
@@ -293,6 +296,8 @@ class GeminiService {
     final preferenceText =
         settings.preferences.isEmpty ? 'なし' : settings.preferences.join('、');
     final moodText = moods.isEmpty ? '指定なし' : moods.join('、');
+    final otherRequestText =
+        otherRequest.trim().isEmpty ? '指定なし' : otherRequest.trim();
 
     return '''
 あなたは日本の家庭料理に詳しい献立アドバイザーです。
@@ -308,6 +313,7 @@ ${dates.join('、')}
 - アレルギー食材: $allergyText
 - 好み: $preferenceText
 - 気分: $moodText
+- その他要望: $otherRequestText
 
 # 作成ルール
 - 各日について「主菜」「副菜」「汁物」の3品を必ず提案すること。
